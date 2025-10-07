@@ -521,7 +521,7 @@ def add_expense():
 
     # GET request - show the form
     # Note: categories already available via context processor
-    return render_template('add_expense.html')
+    return render_template('add_expense.html', now=datetime.now())
 
     """
     GET REQUEST:
@@ -733,7 +733,8 @@ def edit_expense(expense_id):
     return render_template(
         'add_expense.html',
         expense=expense,
-        edit_mode=True
+        edit_mode=True,
+        now=datetime.now()
         # Note: categories already available via context processor
     )
 
@@ -1178,7 +1179,7 @@ def add_income():
             return redirect(url_for('add_income'))
 
     # GET request - show the form
-    return render_template('add_income.html')
+    return render_template('add_income.html', now=datetime.now())
 
 
 @app.route('/income/edit/<int:income_id>', methods=['GET', 'POST'])
@@ -1247,7 +1248,8 @@ def edit_income(income_id):
     return render_template(
         'add_income.html',
         income=income,
-        edit_mode=True
+        edit_mode=True,
+        now=datetime.now()
     )
 
     """
