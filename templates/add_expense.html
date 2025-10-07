@@ -1,0 +1,269 @@
+<!--
+ADD_EXPENSE.HTML - Add/Edit Expense Form
+=========================================
+
+PURPOSE:
+This template serves double duty:
+1. Adding new expenses (when edit_mode is not set)
+2. Editing existing expenses (when edit_mode=True and expense is provided)
+
+TEMPLATE REUSABILITY:
+Instead of creating separate add and edit templates, we use conditional
+logic to make one template work for both purposes. This is DRY (Don't Repeat Yourself).
+
+CONDITIONAL RENDERING:
+The template checks 'edit_mode' variable to determine behavior:
+- Page title: "Add Expense" vs "Edit Expense"
+- Form action: /add vs /edit/123
+- Submit button: "Add Expense" vs "Update Expense"
+- Form pre-fill: Empty fields vs filled with existing data
+
+JUNIOR DEVELOPER NOTES:
+- Forms use POST method to submit data securely (not visible in URL)
+- Input 'name' attributes must match what backend expects (request.form.get('name'))
+- Required attribute provides browser-side validation (user-friendly)
+- Server-side validation still needed (never trust client-side only!)
+-->
+
+{% extends "base.html" %}
+
+{% block title %}
+{% if edit_mode %}Edit{% else %}Add{% endif %} Expense - Personal Finance Tracker
+<!--
+TITLE BLOCK:
+Uses conditional to show "Edit Expense" or "Add Expense" in browser tab.
+Provides better user experience and helps with browser history.
+-->
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if edit_mode %}✏️ Edit{% else %}➕ Add{% endif %} Expense</h1>
+    <!--
+    CONDITIONAL HEADER:
+    Emoji provides visual distinction between add and edit modes.
+    Same conditional pattern as title - consistency is important!
+    -->
+</div>
+
+<div class="form-container" style="max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <!--
+    FORM CONTAINER STYLING:
+    - max-width: 600px prevents form from being too wide on large screens
+    - margin: 0 auto centers the form horizontally
+    - background: white creates card-like appearance
+    - padding: adds breathing room inside container
+    - border-radius: rounds corners for modern look
+    - box-shadow: subtle shadow for depth
+    -->
+
+    <form method="POST" action="{% if edit_mode %}{{ url_for('edit_expense', expense_id=expense.id) }}{% else %}{{ url_for('add_expense') }}{% endif %}">
+    <!--
+    FORM ELEMENT:
+    method="POST" - Submits data in request body (secure, not visible in URL)
+    action="..." - URL where form data will be sent
+
+    CONDITIONAL ACTION:
+    - Add mode: Posts to /add route
+    - Edit mode: Posts to /edit/123 route (where 123 is the expense ID)
+
+    WHY POST NOT GET?
+    - POST is for creating/modifying data
+    - GET is for retrieving data
+    - POST doesn't show form data in URL (better security and cleaner URLs)
+    -->
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Date:</label>
+            <!--
+            LABEL ELEMENT:
+            'for' attribute links label to input (clicking label focuses input)
+            Screen readers use labels to describe inputs (accessibility!)
+            -->
+
+            <input type="date" id="date" name="date" required max="{{ now.strftime('%Y-%m-%d') }}"
+                   {% if expense %}value="{{ expense.date }}"{% endif %}
+                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+            <!--
+            DATE INPUT:
+            type="date" - Browser provides date picker (no manual typing needed!)
+            id="date" - Matches label's 'for' attribute
+            name="date" - Key name when submitted (backend gets request.form['date'])
+            required - Browser prevents submission if empty (client-side validation)
+            value="..." - Pre-fills field in edit mode, empty in add mode
+
+            PRE-FILLING LOGIC:
+            In edit mode: value attribute is added with existing date
+            In add mode: expense is undefined, so no value attribute (empty field)
+            -->
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="category" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Category:</label>
+            <select id="category" name="category" required
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                <!--
+                SELECT (DROPDOWN):
+                Restricts user to predefined options (better than free text)
+                Ensures data consistency (no typos like "food" vs "Food" vs "FOOD")
+                -->
+
+                <option value="">-- Select Category --</option>
+                <!--
+                PLACEHOLDER OPTION:
+                Empty value, shows as prompt
+                Required attribute prevents submission if this is still selected
+                -->
+
+                {% for category in categories %}
+                <option value="{{ category }}" {% if expense and expense.category == category %}selected{% endif %}>
+                    {{ category }}
+                </option>
+                {% endfor %}
+                <!--
+                DYNAMIC OPTIONS:
+                Loop through categories list from backend
+                Each iteration creates an <option> element
+
+                SELECTED LOGIC:
+                In edit mode: If this option matches expense.category, mark as selected
+                selected attribute makes that option show as chosen
+
+                EXAMPLE RENDERED HTML (edit mode, category="Food"):
+                <option value="Food" selected>Food</option>
+                <option value="Transport">Transport</option>
+                <option value="Entertainment">Entertainment</option>
+                -->
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="amount" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Amount:</label>
+            <input type="number" id="amount" name="amount" step="0.01" min="0.01" required
+                   {% if expense %}value="{{ expense.amount }}"{% endif %}
+                   placeholder="25.50"
+                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+            <!--
+            NUMBER INPUT:
+            type="number" - Only accepts numeric input (browser validates)
+            step="0.01" - Allows decimals to 2 places (for cents: $25.50)
+            min="0.01" - Prevents negative or zero amounts
+            placeholder="25.50" - Shows example when field is empty
+            required - Must have value to submit
+
+            VALIDATION LAYERS:
+            1. Browser: type, step, min, required (immediate feedback)
+            2. Backend: Python validates again (never trust client only!)
+
+            WHY BOTH?
+            - Browser validation: Better UX (instant feedback, no page reload)
+            - Server validation: Security (users can bypass browser validation)
+            -->
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="description" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Description (Optional):</label>
+            <textarea id="description" name="description" rows="3" maxlength="500"
+                      placeholder="e.g., Lunch at cafe"
+                      style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; resize: vertical;">{% if expense %}{{ expense.description }}{% endif %}</textarea>
+            <!--
+            TEXTAREA:
+            Multi-line text input (unlike <input> which is single-line)
+            rows="3" - Shows 3 lines initially
+            resize: vertical - User can resize height but not width
+            No 'required' - This field is optional
+
+            VALUE PLACEMENT:
+            Textarea value goes between tags, not in value attribute:
+            <textarea>Content here</textarea>
+            NOT: <textarea value="Content here"></textarea>
+
+            WHITESPACE MATTERS:
+            Any spaces/newlines between tags appear in textarea
+            That's why we use if expense on same line as tags
+            -->
+        </div>
+
+        <div class="form-actions" style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <!--
+            FORM ACTIONS:
+            display: flex - Arranges buttons horizontally
+            gap: 1rem - Adds space between buttons
+            justify-content: flex-end - Aligns buttons to right (common pattern)
+            -->
+
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+            <!--
+            CANCEL BUTTON:
+            Actually a link styled as button (consistent appearance)
+            Takes user back to dashboard without submitting form
+            Good UX - always provide way to back out of an action
+
+            WHY <a> NOT <button>?
+            <a> navigates to different page
+            <button type="submit"> submits form
+            Different purposes, but styled identically for consistency
+            -->
+
+            <button type="submit" class="btn btn-primary">
+                {% if edit_mode %}Update{% else %}Add{% endif %} Expense
+            </button>
+            <!--
+            SUBMIT BUTTON:
+            type="submit" - Clicking triggers form submission
+            Text changes based on mode: "Add Expense" or "Update Expense"
+
+            FORM SUBMISSION FLOW:
+            1. User clicks Submit button
+            2. Browser validates (required fields, number format, etc.)
+            3. If valid: POST request sent to action URL with form data
+            4. Backend processes request, saves to database
+            5. Backend sends redirect response
+            6. Browser navigates to dashboard, shows success message
+            -->
+        </div>
+    </form>
+</div>
+
+<!--
+EDUCATIONAL NOTES FOR JUNIOR DEVELOPERS:
+
+FORM BEST PRACTICES:
+
+1. ALWAYS use labels with inputs (accessibility + usability)
+2. Use appropriate input types (date, number, email, etc.)
+3. Provide placeholder examples ("25.50" shows expected format)
+4. Client AND server validation (defense in depth)
+5. Clear error messages (specific, helpful)
+6. Logical tab order (date → category → amount → description)
+
+COMMON FORM MISTAKES TO AVOID:
+
+❌ Missing name attributes (form won't submit that field!)
+❌ Typos in name (name="amout" won't match backend request.form['amount'])
+❌ Only client-side validation (users can bypass)
+❌ Generic error messages ("Error occurred" - not helpful!)
+❌ Poor placeholder text ("Enter amount" instead of "25.50")
+❌ Forgetting labels (screen readers can't describe inputs)
+
+TESTING CHECKLIST:
+
+- [ ] Add new expense successfully
+- [ ] Edit existing expense successfully
+- [ ] Required fields prevent submission when empty
+- [ ] Amount validation works (no negative, no text)
+- [ ] Category dropdown shows all options
+- [ ] Edit mode pre-fills all fields correctly
+- [ ] Cancel button returns to dashboard
+- [ ] Success/error messages display correctly
+- [ ] Form works on mobile (touch-friendly, responsive)
+
+FORM SECURITY:
+
+- Input validation (client + server)
+- SQL injection prevention (use parameterized queries)
+- XSS prevention (escape user input when displaying)
+- CSRF protection (Flask provides this automatically)
+
+-->
+{% endblock %}

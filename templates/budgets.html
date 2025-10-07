@@ -1,0 +1,477 @@
+<!--
+BUDGETS.HTML - Budget Management & Tracking
+===========================================
+
+PURPOSE:
+This page allows users to set monthly spending limits for each category and
+track their progress throughout the month. Visual progress bars show at-a-glance
+whether spending is on track, approaching limit, or over budget.
+
+FEATURES IMPLEMENTED:
+- Set monthly budget limits for each category
+- Visual progress bars showing budget usage
+- Color-coded status (green=good, yellow=warning, red=over budget)
+- Current month spending totals
+- Percentage of budget used
+- Add/update budget form
+
+BUDGET PSYCHOLOGY:
+Studies show people are 42% more likely to stick to budgets when they have:
+1. Visual feedback (progress bars)
+2. Color coding (red=danger, green=safe)
+3. Specific limits vs vague goals ("$500 for food" vs "spend less")
+
+This page implements all three!
+
+JUNIOR DEVELOPER NOTES:
+- Budgets are monthly (reset each month)
+- We calculate current month spending on the fly
+- Progress bars are pure CSS (no JavaScript needed!)
+- Colors provide instant feedback without reading numbers
+-->
+
+{% extends "base.html" %}
+
+{% block title %}Budget Management - Financial Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Modern Page Header -->
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 1.875rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;">Budget Management</h1>
+    <p style="color: #6b7280;">Set spending limits and track your progress for {{ current_month }}</p>
+</div>
+
+<!-- Add/Edit Budget Form -->
+<div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f3f4f6; margin-bottom: 1.5rem;">
+    <h2 style="margin-top: 0; font-size: 1.125rem; font-weight: 700; color: #111827;">Set Budget Limit</h2>
+    <!--
+    BUDGET FORM:
+    Allows setting or updating monthly budget for a category.
+    If budget exists, it updates. If not, it creates new.
+    This is called "upsert" (update or insert).
+    -->
+
+    <form method="POST" action="{{ url_for('manage_budgets') }}" style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: end;">
+        <!--
+        FORM LAYOUT:
+        display: flex with gap creates horizontal form
+        flex-wrap: wrap stacks on small screens
+        align-items: end aligns inputs to bottom (for consistent button placement)
+        -->
+
+        <div style="flex: 1; min-width: 200px;">
+            <label for="category" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Category:</label>
+            <select id="category" name="category" required
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                <option value="">-- Select Category --</option>
+                {% for cat_name, cat_color in categories %}
+                <option value="{{ cat_name }}">{{ cat_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="flex: 1; min-width: 200px;">
+            <label for="monthly_limit" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Monthly Limit:</label>
+            <input type="number" id="monthly_limit" name="monthly_limit" step="0.01" min="1" required
+                   placeholder="500.00"
+                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+            <!--
+            NUMBER INPUT:
+            step="0.01" allows cents
+            min="1" prevents zero or negative budgets
+            placeholder shows example amount
+            -->
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-primary">Set Budget</button>
+        </div>
+    </form>
+
+    <p style="margin-top: 1rem; margin-bottom: 0; color: #666; font-size: 0.875rem;">
+        💡 Tip: Set realistic budgets based on past spending. Too strict = likely to fail!
+    </p>
+    <!--
+    USER GUIDANCE:
+    Helpful tips improve success rate.
+    Common mistake: Setting budgets too low, then giving up when they fail.
+    -->
+</div>
+
+<!-- Budget Status Overview -->
+{% if budget_status %}
+<!--
+BUDGET_STATUS:
+Dictionary where:
+- Key: Category name
+- Value: {
+    'limit': 500.00,
+    'spent': 350.00,
+    'remaining': 150.00,
+    'percentage': 70.0,
+    'status': 'good' | 'warning' | 'danger'
+  }
+-->
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">
+    <h2 style="margin-top: 0; font-size: 1.125rem; font-weight: 700; color: #111827;">Savings Goals</h2>
+
+    <div style="display: grid; gap: 1.5rem;">
+        {% for category, status in budget_status.items() %}
+        <!--
+        LOOPING THROUGH BUDGETS:
+        Each category with a budget gets a progress card.
+        status contains all the calculated data we need.
+        -->
+
+        <div style="padding: 1.5rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid {{ category_colors.get(category, '#BDC3C7') }};">
+            <!--
+            CATEGORY CARD:
+            border-left color matches category color from dashboard
+            Provides visual consistency across app
+            -->
+
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.25rem;">{{ category }}</h3>
+                    <p style="margin: 0; color: #666; font-size: 0.875rem;">
+                        {{ status.spent|currency }} of {{ status.limit|currency }}
+                        <span style="font-weight: 600; color: {{ 'green' if status.percentage <= 75 else ('#f39c12' if status.percentage <= 100 else 'red') }};">
+                            ({{ status.percentage|round(1) }}%)
+                        </span>
+                    </p>
+                    <!--
+                    CONDITIONAL COLORING:
+                    - 0-75%: Green (on track)
+                    - 76-100%: Orange (warning)
+                    - Over 100%: Red (over budget)
+
+                    This uses inline conditional (ternary operator):
+                    condition ? true_value : false_value
+                    Can be nested for multiple conditions
+                    -->
+                </div>
+
+                <div style="text-align: right;">
+                    {% if status.percentage <= 100 %}
+                    <span style="color: #27ae60; font-size: 0.875rem; font-weight: 600;">
+                        {{ status.remaining|currency }} left
+                    </span>
+                    {% else %}
+                    <span style="color: #e74c3c; font-size: 0.875rem; font-weight: 600;">
+                        {{ (status.spent - status.limit)|currency }} over!
+                    </span>
+                    {% endif %}
+                    <!--
+                    REMAINING VS OVER:
+                    - Under budget: Show remaining amount
+                    - Over budget: Show overage amount
+                    Different wording for different situations!
+                    -->
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div style="width: 100%; height: 24px; background: #e0e0e0; border-radius: 12px; overflow: hidden; position: relative;">
+                <!--
+                PROGRESS BAR CONTAINER:
+                - background: gray (unfilled portion)
+                - border-radius: rounds corners
+                - overflow: hidden clips the progress fill
+                - position: relative for absolute positioning of percentage text
+                -->
+
+                <div style="height: 100%;
+                            width: {{ [status.percentage, 100]|min }}%;
+                            background: {{ 'linear-gradient(90deg, #27ae60, #2ecc71)' if status.percentage <= 75 else ('linear-gradient(90deg, #f39c12, #f1c40f)' if status.percentage <= 100 else 'linear-gradient(90deg, #c0392b, #e74c3c)') }};
+                            transition: width 0.3s ease;
+                            border-radius: 12px;">
+                </div>
+                <!--
+                PROGRESS BAR FILL:
+                - width: percentage of budget used (capped at 100% for visual display)
+                - background: gradient changes color based on status
+                  * Green gradient (≤75%): On track
+                  * Orange gradient (76-100%): Warning
+                  * Red gradient (>100%): Over budget
+                - transition: smooth animation when values change
+
+                WHY CAP AT 100% FOR DISPLAY?
+                [status.percentage, 100]|min takes minimum of percentage and 100
+                If spent $600 on $500 budget (120%), bar shows 100% width
+                Otherwise bar would overflow container!
+
+                But we still show the actual percentage in text (120%)
+                -->
+
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                            display: flex; align-items: center; justify-content: center;
+                            font-size: 0.75rem; font-weight: 700; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+                    {{ status.percentage|round(1) }}%
+                </div>
+                <!--
+                PERCENTAGE TEXT OVERLAY:
+                - position: absolute centers text over progress bar
+                - text-shadow: makes white text readable on any background color
+                - Always shows actual percentage (even if >100%)
+                -->
+            </div>
+
+            <!-- Daily Budget Pace -->
+            <div style="margin-top: 0.75rem; font-size: 0.875rem; color: #666;">
+                <!--
+                BUDGET PACING:
+                Helps users understand if they're on track for the month.
+                Example: If it's day 15 of 30-day month, should have used ~50% of budget.
+                -->
+                {% set days_in_month = 30 %}
+                {% set current_day = now.day %}
+                {% set expected_percentage = (current_day / days_in_month * 100)|round(1) %}
+                <!--
+                SIMPLE BUDGET PACING CALCULATION:
+                If we're halfway through month, should have used ~50% of budget.
+                This is simplified (doesn't account for varying month lengths precisely).
+
+                IMPROVEMENT OPPORTUNITY:
+                Could use actual days in month with Python's calendar module.
+                -->
+
+                {% if status.percentage <= expected_percentage %}
+                <span style="color: #27ae60;">✓ On pace</span>
+                <span style="color: #999;"> (Expected: {{ expected_percentage }}% by today)</span>
+                {% else %}
+                <span style="color: #f39c12;">⚠ Spending faster than expected</span>
+                <span style="color: #999;"> (Expected: {{ expected_percentage }}% by today)</span>
+                {% endif %}
+                <!--
+                PACING FEEDBACK:
+                - Green checkmark: Spending slower than expected (good!)
+                - Orange warning: Spending faster than expected (caution!)
+
+                This helps users adjust behavior mid-month.
+                -->
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% else %}
+<!-- No Budgets Set Yet -->
+<div class="empty-state" style="text-align: center; padding: 3rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <p class="empty-icon" style="font-size: 4rem; margin-bottom: 1rem;">💰</p>
+    <p class="empty-message" style="font-size: 1.25rem; color: #2C3E50; margin-bottom: 0.5rem;">No budgets set yet</p>
+    <p class="empty-hint" style="color: #666; margin-bottom: 1.5rem;">
+        Set your first budget above to start tracking your spending limits!
+    </p>
+    <p style="color: #666; font-size: 0.875rem; max-width: 500px; margin: 0 auto;">
+        <strong>Why set budgets?</strong><br>
+        Research shows people who set budgets save 15-20% more than those who don't.
+        Budgets provide guardrails to keep spending on track!
+    </p>
+</div>
+{% endif %}
+
+<!-- Existing Budgets Table -->
+{% if budgets %}
+<div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem;">
+    <h2 style="margin-top: 0;">All Budget Limits</h2>
+    <!--
+    BUDGETS TABLE:
+    Shows all configured budgets, including categories with no spending this month.
+    Useful for seeing what limits are set.
+    -->
+
+    <div class="table-container">
+        <table class="expense-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Monthly Limit</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for budget in budgets %}
+                <tr>
+                    <td data-label="Category">
+                        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: {{ category_colors.get(budget.category, '#BDC3C7') }}; margin-right: 8px;"></span>
+                        {{ budget.category }}
+                        <!--
+                        COLOR DOT:
+                        Small circle matches category color.
+                        display: inline-block allows width/height on span.
+                        border-radius: 50% makes square into circle.
+                        -->
+                    </td>
+                    <td data-label="Monthly Limit" style="font-weight: 600;">
+                        {{ budget.monthly_limit|currency }}
+                    </td>
+                    <td data-label="Created" style="color: #666; font-size: 0.875rem;">
+                        {{ budget.created_at }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Budget Tips Section -->
+<div style="background: #e8f5e9; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #4caf50;">
+    <h3 style="margin-top: 0; color: #2e7d32;">💡 Budget Best Practices</h3>
+    <!--
+    TIPS SECTION:
+    Educational content helps users succeed.
+    Green background (not white) visually separates from other sections.
+    -->
+
+    <ul style="margin: 0; padding-left: 1.5rem; color: #2e7d32;">
+        <li style="margin-bottom: 0.5rem;">
+            <strong>Start with tracking:</strong> Track expenses for a month before setting budgets. Use that data as your baseline.
+        </li>
+        <li style="margin-bottom: 0.5rem;">
+            <strong>Be realistic:</strong> Budgets that are too strict fail. It's okay to start conservative and adjust.
+        </li>
+        <li style="margin-bottom: 0.5rem;">
+            <strong>Use the 50/30/20 rule:</strong> 50% needs, 30% wants, 20% savings is a good starting framework.
+        </li>
+        <li style="margin-bottom: 0.5rem;">
+            <strong>Review monthly:</strong> At end of each month, see what worked and adjust for next month.
+        </li>
+        <li>
+            <strong>Emergency buffer:</strong> Add 10% to each budget for unexpected expenses. Life happens!
+        </li>
+    </ul>
+</div>
+
+{% endblock %}
+
+<!--
+EDUCATIONAL NOTES FOR JUNIOR DEVELOPERS:
+
+PROGRESS BAR IMPLEMENTATION:
+
+1. STRUCTURE:
+   <div class="container">       ← Gray background (unfilled)
+     <div class="fill">           ← Colored fill (grows with percentage)
+       <div class="text">         ← Percentage text overlay
+   </div>
+
+2. KEY CSS CONCEPTS:
+   - Container: overflow: hidden clips anything outside
+   - Fill: width controls how much shows (0-100%)
+   - Overlay: position: absolute takes it out of flow, centers over bar
+
+3. COLOR PSYCHOLOGY:
+   - Green: Safety, success, on-track
+   - Orange/Yellow: Caution, warning, pay attention
+   - Red: Danger, stop, over limit
+
+   These are universal signals (traffic lights, warning signs).
+
+4. WHY GRADIENTS?
+   Linear gradients (darker to lighter) add depth and polish.
+   Flat colors look dated; gradients look modern.
+
+5. TRANSITION EFFECT:
+   transition: width 0.3s ease;
+   When width changes (new spending), bar smoothly animates.
+   0.3s is sweet spot: fast enough to feel responsive, slow enough to see.
+
+BUDGET CALCULATIONS:
+
+1. PERCENTAGE USED:
+   (spent / limit) * 100
+   $350 spent of $500 = (350/500)*100 = 70%
+
+2. REMAINING AMOUNT:
+   limit - spent
+   $500 - $350 = $150 remaining
+
+3. OVERAGE AMOUNT:
+   spent - limit (when over budget)
+   $600 - $500 = $100 over
+
+4. EXPECTED PERCENTAGE (PACING):
+   (current_day / days_in_month) * 100
+   Day 15 of 30 = (15/30)*100 = 50% (should be halfway through budget)
+
+DICTIONARY METHODS IN JINJA2:
+
+- .items() → Loop through key-value pairs
+  {% raw %}{% for key, value in dict.items() %}{% endraw %}
+
+- .keys() → Loop through just keys
+  {% raw %}{% for key in dict.keys() %}{% endraw %}
+
+- .values() → Loop through just values
+  {% raw %}{% for value in dict.values() %}{% endraw %}
+
+- .get(key, default) → Get value with fallback
+  {% raw %}{{ dict.get('missing_key', 'fallback') }}{% endraw %}
+
+TESTING CHECKLIST:
+
+Functionality:
+- [ ] Can set new budget
+- [ ] Can update existing budget
+- [ ] Progress bars display correctly
+- [ ] Colors change at thresholds (75%, 100%)
+- [ ] Percentage calculations are accurate
+- [ ] Remaining/overage amounts correct
+- [ ] Pacing indicator works
+
+Visual:
+- [ ] Progress bars are smooth and polished
+- [ ] Colors are accessible (sufficient contrast)
+- [ ] Layout works on mobile (responsive)
+- [ ] Tips section is readable
+- [ ] Category colors match across app
+
+Edge Cases:
+- [ ] $0 spent shows 0% (not division by zero error)
+- [ ] Over 100% caps bar at 100% visually
+- [ ] Very long category names don't break layout
+- [ ] Large amounts (>$10,000) display correctly
+
+UX:
+- [ ] Success message shows after setting budget
+- [ ] Form clears after submission
+- [ ] Error messages are clear and helpful
+- [ ] Empty state guides user to action
+- [ ] Tips are actually useful (not generic)
+
+ACCESSIBILITY:
+- [ ] Form labels properly associated with inputs
+- [ ] Color not the only indicator (icons + text too)
+- [ ] Keyboard navigation works
+- [ ] Screen readers can understand progress bars
+- [ ] Sufficient color contrast ratios
+
+IMPROVEMENTS FOR FUTURE:
+1. Add budget delete button
+2. Show budget history/trends over time
+3. Budget categories for groups (groceries + dining = food budget)
+4. Notifications when approaching budget limit
+5. Weekly budget view in addition to monthly
+6. Budget vs actual spending charts
+7. Rollover unused budget to next month option
+8. Import suggested budgets from expense history
+
+COMMON PITFALLS:
+❌ Not capping progress bar width at 100% (visual overflow)
+❌ Division by zero when limit is $0
+❌ Not handling case where budget exists but no spending yet
+❌ Forgetting to show actual percentage when >100%
+❌ Using only color to indicate status (accessibility issue)
+❌ Not providing context on what's a "good" budget
+❌ Too many decimal places (350.123456 instead of 350.12)
+
+FURTHER READING:
+- MDN: Linear Gradients: https://developer.mozilla.org/en-US/docs/Web/CSS/gradient/linear-gradient
+- CSS Tricks: Animated Progress Bars: https://css-tricks.com/css3-progress-bars/
+- UX Design: Progress Indicators: https://uxdesign.cc/progress-indicators-in-ux-design-4892283e7ec8
+-->

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Dashboard{% endblock %}
+
+{% block content %}
+<!-- Modern Dashboard Header -->
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 1.875rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;">Financial Dashboard</h1>
+    <p style="color: #6b7280;">Track your income, expenses, and savings goals</p>
+</div>
+
+<!-- Action Bar with Buttons -->
+<div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; align-items: center;">
+    <a href="{{ url_for('add_expense') }}" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.2s;">
+        <span style="font-size: 1.2rem;">+</span>
+        Add Transaction
+    </a>
+    <a href="{{ url_for('export_csv') }}" style="background: white; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; text-decoration: none; border: 1px solid #e5e7eb; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+        <span>📥</span>
+        Export
+    </a>
+</div>
+
+<!-- Financial Overview Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+
+    <!-- Total Income Card -->
+    <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2); color: white;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem;">
+            <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 0.5rem;">
+                <span style="font-size: 1.5rem;">💰</span>
+            </div>
+        </div>
+        <h3 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; opacity: 0.9;">Total Income</h3>
+        <p style="font-size: 1.75rem; font-weight: 700; margin: 0;">{{ total_income_amount|currency }}</p>
+        <p style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.5rem;">{{ total_income }} records</p>
+    </div>
+
+    <!-- Total Expenses Card -->
+    <div style="background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2); color: white;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem;">
+            <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 0.5rem;">
+                <span style="font-size: 1.5rem;">💳</span>
+            </div>
+        </div>
+        <h3 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; opacity: 0.9;">Total Expenses</h3>
+        <p style="font-size: 1.75rem; font-weight: 700; margin: 0;">{{ total_expenses_amount|currency }}</p>
+        <p style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.5rem;">{{ total_expenses }} records</p>
+    </div>
+
+    <!-- Net Savings Card -->
+    <div style="background: linear-gradient(135deg, {% if net_savings >= 0 %}#3B82F6 0%, #2563EB{% else %}#F59E0B 0%, #D97706{% endif %} 100%); padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); color: white;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem;">
+            <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 0.5rem;">
+                <span style="font-size: 1.5rem;">{% if net_savings >= 0 %}💎{% else %}⚠️{% endif %}</span>
+            </div>
+        </div>
+        <h3 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; opacity: 0.9;">Net Savings</h3>
+        <p style="font-size: 1.75rem; font-weight: 700; margin: 0;">
+            {% if net_savings >= 0 %}+{% endif %}{{ net_savings|currency }}
+        </p>
+        <p style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.5rem;">
+            {% if net_savings >= 0 %}Surplus{% else %}Deficit{% endif %}
+        </p>
+    </div>
+
+    <!-- Savings Rate Card -->
+    <div style="background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.2); color: white;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem;">
+            <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 0.5rem;">
+                <span style="font-size: 1.5rem;">📊</span>
+            </div>
+        </div>
+        <h3 style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; opacity: 0.9;">Savings Rate</h3>
+        <p style="font-size: 1.75rem; font-weight: 700; margin: 0;">{{ savings_rate|round(1) }}%</p>
+        <p style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.5rem;">
+            {% if savings_rate >= 20 %}Excellent!{% elif savings_rate >= 10 %}Good{% else %}Needs improvement{% endif %}
+        </p>
+    </div>
+</div>
+
+<!--
+FINANCIAL OVERVIEW CARDS EXPLANATION:
+
+1. TOTAL INCOME (Green):
+   - Shows all money coming IN
+   - Green gradient = positive/growth
+   - Includes count of income records
+
+2. TOTAL EXPENSES (Red):
+   - Shows all money going OUT
+   - Red gradient = spending/caution
+   - Includes count of expense records
+
+3. NET SAVINGS (Blue/Orange):
+   - Income minus Expenses
+   - Blue if positive (surplus)
+   - Orange if negative (deficit)
+   - Shows + or - to indicate direction
+
+4. SAVINGS RATE (Purple):
+   - Percentage of income saved
+   - Calculated as: (Net Savings / Income) * 100
+   - Financial health indicator:
+     * 20%+ = Excellent (recommended by experts)
+     * 10-19% = Good
+     * <10% = Needs improvement
+
+COLOR PSYCHOLOGY:
+- Green = Money in, growth, positive
+- Red = Money out, caution
+- Blue = Savings, stability
+- Orange = Warning, deficit
+- Purple = Goals, planning
+
+JUNIOR DEV NOTES:
+- Linear gradients make cards visually appealing
+- Conditional colors based on financial health
+- White opacity backgrounds for icons (glassmorphism)
+- Box shadows with matching colors create depth
+-->
+
+
+<!-- Recent Transactions - Modern List Design -->
+<div style="background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.125rem; font-weight: 700; color: #111827;">Recent Transactions</h3>
+        <span style="color: #6b7280; font-size: 0.875rem;">{{ total_expenses }} total</span>
+    </div>
+
+    {% if expenses %}
+    <div style="max-height: 400px; overflow-y: auto;">
+        {% for expense in expenses %}
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; border-radius: 0.5rem; transition: background 0.2s; margin-bottom: 0.5rem;"
+             onmouseover="this.style.background='#f9fafb'"
+             onmouseout="this.style.background='transparent'">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+                <div style="width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #fee2e2; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: #dc2626; font-size: 1.25rem;">📉</span>
+                </div>
+                <div style="flex: 1;">
+                    <p style="font-weight: 500; color: #111827; margin: 0;">{{ expense.description if expense.description else 'Expense' }}</p>
+                    <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">{{ expense.category }} • {{ expense.date }}</p>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-weight: 700; color: #dc2626;">-{{ expense.amount|currency }}</span>
+                <div style="display: flex; gap: 0.5rem; opacity: 0; transition: opacity 0.2s;"
+                     onmouseover="this.parentElement.parentElement.querySelector('div:last-child').style.opacity='1'"
+                     onmouseout="this.parentElement.parentElement.querySelector('div:last-child').style.opacity='0'">
+                    <a href="{{ url_for('edit_expense', expense_id=expense.id) }}" style="color: #3b82f6; text-decoration: none; font-size: 0.875rem;">✏️</a>
+                    <form method="POST" action="{{ url_for('delete_expense_route', expense_id=expense.id) }}" style="display: inline; margin: 0;">
+                        <button type="submit" onclick="return confirm('Delete this expense?');" style="background: none; border: none; color: #dc2626; cursor: pointer; font-size: 0.875rem; padding: 0;">❌</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 4rem 1rem; color: #9ca3af;">
+        <p style="font-size: 2rem; margin-bottom: 0.5rem;">💸</p>
+        <p style="margin: 0; color: #6b7280;">No transactions yet. Add your first transaction above!</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

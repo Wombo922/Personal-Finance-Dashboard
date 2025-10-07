@@ -1,0 +1,209 @@
+<!--
+ADD_INCOME.HTML - Add/Edit Income Form
+=======================================
+
+PURPOSE:
+This template serves double duty:
+1. Adding new income (when edit_mode is not set)
+2. Editing existing income (when edit_mode=True and income is provided)
+
+INCOME vs EXPENSES:
+Income is money you RECEIVE (paycheck, freelance payment, gifts).
+Expenses are money you SPEND (groceries, rent, entertainment).
+Tracking both helps calculate net worth and savings rate.
+
+TEMPLATE REUSABILITY:
+Instead of separate add and edit templates, we use conditional logic.
+This is DRY (Don't Repeat Yourself) and makes maintenance easier.
+
+JUNIOR DEVELOPER NOTES:
+- Very similar to add_expense.html but with different fields
+- Instead of "category" we have "source" (where money came from)
+- Amount should always be positive (validation enforced)
+- Same pattern: GET shows form, POST submits data
+-->
+
+{% extends "base.html" %}
+
+{% block title %}
+{% if edit_mode %}Edit{% else %}Add{% endif %} Income - Personal Finance Tracker
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if edit_mode %}✏️ Edit{% else %}💰 Add{% endif %} Income</h1>
+    <!--
+    CONDITIONAL HEADER:
+    💰 emoji for add (money coming in!)
+    ✏️ emoji for edit
+    Provides visual distinction between modes
+    -->
+</div>
+
+<div class="form-container" style="max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <form method="POST" action="{% if edit_mode %}{{ url_for('edit_income', income_id=income.id) }}{% else %}{{ url_for('add_income') }}{% endif %}">
+    <!--
+    FORM ACTION:
+    - Add mode: Posts to /income/add
+    - Edit mode: Posts to /income/edit/123 (where 123 is income ID)
+
+    CONDITIONAL URL:
+    url_for() generates URLs based on route function name
+    Better than hardcoding URLs - changes automatically if routes change
+    -->
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Date:</label>
+            <input type="date" id="date" name="date" required max="{{ now.strftime('%Y-%m-%d') }}"
+                   {% if income %}value="{{ income.date }}"{% endif %}
+                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+            <!--
+            DATE INPUT:
+            - Browser provides nice date picker
+            - required attribute prevents empty submission
+            - Pre-filled in edit mode with existing date
+            -->
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="source" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Source:</label>
+            <select id="source" name="source" required
+                    style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                <!--
+                SOURCE DROPDOWN:
+                Restricts user to predefined income sources
+                Prevents typos and ensures consistency
+                Sources come from IncomeSource enum in models.py
+                -->
+
+                <option value="">-- Select Source --</option>
+                {% for src_name, src_color in income_sources %}
+                <option value="{{ src_name }}" {% if income and income.source == src_name %}selected{% endif %}>
+                    {{ src_name }}
+                </option>
+                {% endfor %}
+
+                <!--
+                DYNAMIC OPTIONS:
+                Loop through income_sources list (provided by context processor)
+                Mark option as "selected" if it matches current income source
+
+                EDIT MODE LOGIC:
+                {% if income and income.source == src %}selected{% endif %}
+                - income exists? (edit mode)
+                - income.source matches this option?
+                - If both true: mark as selected
+                -->
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="amount" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Amount:</label>
+            <input type="number" id="amount" name="amount" step="0.01" min="0.01" required
+                   {% if income %}value="{{ income.amount }}"{% endif %}
+                   placeholder="5000.00"
+                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+            <!--
+            AMOUNT INPUT:
+            - type="number" restricts to numeric input
+            - step="0.01" allows cents (e.g., $5000.50)
+            - min="0.01" prevents zero or negative income
+            - placeholder shows example format
+
+            WHY MIN 0.01 NOT 0?
+            Income of $0 doesn't make sense - use 0.01 as minimum
+            Prevents accidental $0 entries
+            -->
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="description" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Description (Optional):</label>
+            <textarea id="description" name="description" rows="3" maxlength="500"
+                      placeholder="e.g., October paycheck, Freelance project for XYZ Corp"
+                      style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; resize: vertical;">{% if income %}{{ income.description }}{% endif %}</textarea>
+            <!--
+            DESCRIPTION TEXTAREA:
+            - Optional field (no "required" attribute)
+            - Multi-line input for longer notes
+            - resize: vertical allows user to make taller but not wider
+            - Value goes between tags (not in value attribute)
+
+            WHITESPACE HANDLING:
+            {% if income %}{{ income.description }}{% endif %} on same line
+            Otherwise extra whitespace would show in textarea
+            -->
+        </div>
+
+        <div class="form-actions" style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <a href="{{ url_for('view_income') }}" class="btn btn-secondary">Cancel</a>
+            <!--
+            CANCEL BUTTON:
+            Link styled as button - takes user back to income list
+            Good UX: always provide way to cancel/go back
+            -->
+
+            <button type="submit" class="btn btn-primary">
+                {% if edit_mode %}Update{% else %}Add{% endif %} Income
+            </button>
+            <!--
+            SUBMIT BUTTON:
+            Text changes based on mode:
+            - Add mode: "Add Income"
+            - Edit mode: "Update Income"
+
+            Clear action indication improves UX
+            -->
+        </div>
+    </form>
+</div>
+
+<!--
+EDUCATIONAL NOTES FOR JUNIOR DEVELOPERS:
+
+INCOME vs EXPENSE FORMS:
+Very similar structure, but key differences:
+1. Source (income) vs Category (expense)
+2. Income is money IN, expense is money OUT
+3. Different validation rules might apply later
+
+FORM BEST PRACTICES:
+✅ Use labels with inputs (accessibility + usability)
+✅ Appropriate input types (date, number, textarea)
+✅ Clear placeholder examples
+✅ Client AND server validation
+✅ Logical tab order
+✅ Cancel option always available
+
+COMMON MISTAKES TO AVOID:
+❌ Forgetting required attributes
+❌ Not pre-filling forms in edit mode
+❌ Using wrong input types (text instead of number)
+❌ Missing labels (screen readers can't describe fields)
+❌ Generic placeholders ("Enter value" vs "5000.00")
+
+TESTING CHECKLIST:
+- [ ] Can add new income
+- [ ] Can edit existing income
+- [ ] Required fields prevent empty submission
+- [ ] Amount validation works (no negatives, no text)
+- [ ] Source dropdown shows all options
+- [ ] Edit mode pre-fills all fields
+- [ ] Cancel button works
+- [ ] Success/error messages display
+- [ ] Form works on mobile
+
+ACCESSIBILITY:
+- [ ] All inputs have associated labels
+- [ ] Tab navigation works logically
+- [ ] Error messages are clear
+- [ ] Form can be used with keyboard only
+- [ ] Screen reader announces field requirements
+
+FUTURE ENHANCEMENTS:
+1. Add recurring income option (monthly salary)
+2. Tax withholding fields for salary
+3. Currency conversion for foreign income
+4. Attachment uploads (pay stubs, invoices)
+5. Income forecasting based on history
+-->
+{% endblock %}

@@ -1,0 +1,590 @@
+<!--
+ANALYTICS.HTML - Data Visualization Dashboard
+=============================================
+
+PURPOSE:
+This page transforms raw expense data into visual insights using Chart.js.
+Instead of staring at numbers in tables, users can quickly understand their
+spending patterns through interactive charts.
+
+CHARTS INCLUDED:
+1. Category Breakdown Pie Chart - Shows what percentage of budget goes to each category
+2. Spending Trend Line Chart - Shows how spending changes over time
+3. Monthly Comparison Bar Chart - Compares spending across different months
+
+CHART.JS LIBRARY:
+Chart.js is a JavaScript library that creates beautiful, responsive charts.
+It's already included in base.html (<script> tag loading from CDN).
+
+WHY VISUALIZATION MATTERS:
+- Humans process visual information 60,000x faster than text
+- Charts reveal patterns that aren't obvious in tables
+- Visual feedback motivates better financial decisions
+- Easier to spot anomalies and trends
+
+JUNIOR DEVELOPER NOTES:
+- Data flows: Python (backend) → JSON → JavaScript (frontend) → Chart.js → Visual Chart
+- We can't directly use Python variables in JavaScript, so we convert to JSON
+- Charts are rendered client-side (user's browser does the work)
+- Chart.js handles responsiveness automatically (works on mobile!)
+-->
+
+{% extends "base.html" %}
+
+{% block title %}Analytics - Financial Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Modern Page Header -->
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 1.875rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;">Analytics Dashboard</h1>
+    <p style="color: #6b7280;">Visualize your spending patterns and trends</p>
+</div>
+
+<!-- Summary Statistics Cards -->
+<div class="stats-grid" style="margin-bottom: 2rem;">
+    <!--
+    STATS GRID:
+    Quick overview numbers before diving into charts.
+    Provides context for the visualizations below.
+    -->
+
+    <div class="stat-card stat-card-primary">
+        <div class="stat-icon">💰</div>
+        <div class="stat-content">
+            <h3 class="stat-label">Total Spent</h3>
+            <p class="stat-value">{{ total_spent|currency }}</p>
+        </div>
+    </div>
+
+    <div class="stat-card stat-card-success">
+        <div class="stat-icon">📊</div>
+        <div class="stat-content">
+            <h3 class="stat-label">Average Expense</h3>
+            <p class="stat-value">{{ average_expense|currency }}</p>
+        </div>
+    </div>
+
+    <div class="stat-card stat-card-info">
+        <div class="stat-icon">📅</div>
+        <div class="stat-content">
+            <h3 class="stat-label">This Month</h3>
+            <p class="stat-value">{{ current_month_total|currency }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+    <!--
+    RESPONSIVE GRID:
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr))
+    - auto-fit: Automatically creates as many columns as fit
+    - minmax(400px, 1fr): Each column is at least 400px, max 1 fraction of available space
+    - On wide screens: 2 charts side by side
+    - On narrow screens: Charts stack vertically
+
+    This is CSS Grid magic! Learn more: https://css-tricks.com/snippets/css/complete-guide-grid/
+    -->
+
+    <!-- Category Breakdown Pie Chart -->
+    <div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">
+        <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.125rem; font-weight: 700; color: #111827;">Spending by Category</h2>
+        <!--
+        PIE CHART:
+        Best for showing proportions/percentages.
+        Answers: "What percentage of my budget goes to food?"
+        -->
+
+        <div style="position: relative; height: 300px;">
+            <!--
+            CHART CONTAINER:
+            position: relative - Required for Chart.js responsiveness
+            height: 300px - Sets initial chart height
+            Chart.js will maintain aspect ratio when resizing
+            -->
+
+            <canvas id="categoryPieChart"></canvas>
+            <!--
+            CANVAS ELEMENT:
+            HTML5 <canvas> is a drawing surface for graphics.
+            Chart.js draws the chart onto this canvas.
+            ID is used by JavaScript to find and render chart.
+            -->
+        </div>
+    </div>
+
+    <!-- Spending Trend Line Chart -->
+    <div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">
+        <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.125rem; font-weight: 700; color: #111827;">Spending Trend</h2>
+        <!--
+        LINE CHART:
+        Best for showing changes over time.
+        Answers: "Is my spending increasing or decreasing?"
+        Shows trends and patterns clearly.
+        -->
+
+        <div style="position: relative; height: 300px;">
+            <canvas id="trendLineChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Full-Width Chart -->
+<div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f3f4f6; margin-bottom: 1.5rem;">
+    <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.125rem; font-weight: 700; color: #111827;">Monthly Spending Comparison</h2>
+    <!--
+    BAR CHART:
+    Best for comparing quantities across categories.
+    Answers: "Which month did I spend the most?"
+    Easy to compare heights visually.
+    -->
+
+    <div style="position: relative; height: 400px;">
+        <canvas id="monthlyBarChart"></canvas>
+    </div>
+</div>
+
+<!-- Insights Section -->
+<div style="background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">
+    <h2 style="margin-top: 0; margin-bottom: 1rem;">💡 Insights</h2>
+    <!--
+    INSIGHTS:
+    Human-readable interpretation of the data.
+    Charts show "what", insights explain "so what?"
+    -->
+
+    <ul style="list-style: none; padding: 0; margin: 0;">
+        <li style="padding: 0.75rem; margin-bottom: 0.5rem; background: #f8f9fa; border-radius: 4px;">
+            📊 You have tracked {{ category_labels|length }} different expense categories
+        </li>
+        <li style="padding: 0.75rem; margin-bottom: 0.5rem; background: #f8f9fa; border-radius: 4px;">
+            💰 Your average expense is {{ average_expense|currency }}
+        </li>
+        <li style="padding: 0.75rem; background: #f8f9fa; border-radius: 4px;">
+            📈 Use the charts above to identify spending patterns and areas to optimize
+        </li>
+    </ul>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!--
+EXTRA_JS BLOCK:
+This block adds page-specific JavaScript.
+Chart rendering code goes here since it's only needed on analytics page.
+-->
+
+<script>
+/*
+JAVASCRIPT SECTION:
+This code runs in the user's browser to create interactive charts.
+
+DATA FLOW:
+1. Python backend prepares data (category_labels, category_values, etc.)
+2. Jinja2 converts Python data to JSON format
+3. JavaScript receives JSON and passes to Chart.js
+4. Chart.js renders visual charts in canvas elements
+*/
+
+// Wait for page to fully load before creating charts
+document.addEventListener('DOMContentLoaded', function() {
+    /*
+    DOM CONTENT LOADED:
+    This event fires when HTML is fully loaded and parsed.
+    Without this, JavaScript might try to access elements that don't exist yet.
+
+    ALWAYS wrap chart creation in DOMContentLoaded or put scripts at end of <body>.
+    */
+
+    // ========================================================================
+    // CHART 1: Category Breakdown Pie Chart
+    // ========================================================================
+
+    const categoryCtx = document.getElementById('categoryPieChart').getContext('2d');
+    /*
+    GET CONTEXT:
+    Canvas needs a "context" to draw on (like getting a paintbrush for canvas).
+    '2d' means two-dimensional drawing (vs WebGL for 3D).
+    */
+
+    // Convert Python data to JavaScript using Jinja2
+    const categoryLabels = {{ category_labels|tojson }};
+    const categoryData = {{ category_values|tojson }};
+    const categoryColors = {{ category_colors|tojson }};
+    /*
+    TOJSON FILTER:
+    Jinja2's tojson filter converts Python data to JSON format.
+    Python list ['Food', 'Transport'] becomes JavaScript array ["Food", "Transport"]
+
+    WHY NEEDED?
+    Python and JavaScript are different languages. We can't directly use Python
+    variables in JavaScript. JSON is the bridge between them.
+
+    SECURITY NOTE:
+    tojson automatically escapes data to prevent XSS attacks. Always use tojson
+    when passing data from backend to frontend JavaScript!
+    */
+
+    const categoryPieChart = new Chart(categoryCtx, {
+        /*
+        CHART.JS CONSTRUCTOR:
+        new Chart(context, configuration)
+        - context: Where to draw (our canvas)
+        - configuration: Chart type, data, options
+        */
+
+        type: 'pie',
+        /*
+        CHART TYPES:
+        - pie: Circle divided into slices
+        - doughnut: Pie with hole in center
+        - bar: Vertical bars
+        - line: Connected points
+        - radar: Spider web shape
+        */
+
+        data: {
+            labels: categoryLabels,  // ['Food', 'Transport', 'Entertainment']
+            datasets: [{
+                label: 'Spending by Category',
+                data: categoryData,  // [250.50, 100.00, 75.25]
+                backgroundColor: categoryColors,  // ['#FF6B6B', '#4ECDC4', ...]
+                borderWidth: 2,
+                borderColor: '#fff'
+                /*
+                DATASET CONFIGURATION:
+                - label: Appears in legend and tooltips
+                - data: The actual numbers to visualize
+                - backgroundColor: Fill colors for each slice
+                - borderWidth: White border between slices
+                - borderColor: Color of border (white for clean separation)
+                */
+            }]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            /*
+            RESPONSIVE OPTIONS:
+            - responsive: Chart resizes when window resizes
+            - maintainAspectRatio: Keep width:height ratio consistent
+            Mobile-friendly out of the box!
+            */
+
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            // Format tooltip to show: "Food: $250.50 (35%)"
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${label}: $${value.toFixed(2)} (${percentage}%)`;
+                            /*
+                            TOOLTIP CUSTOMIZATION:
+                            Default tooltip just shows value. We add percentage.
+                            context.parsed = the value of this slice
+                            reduce() sums all values to get total
+                            */
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ========================================================================
+    // CHART 2: Spending Trend Line Chart
+    // ========================================================================
+
+    const trendCtx = document.getElementById('trendLineChart').getContext('2d');
+
+    const trendLabels = {{ trend_labels|tojson }};  // ['Jan 2025', 'Feb 2025', ...]
+    const trendData = {{ trend_values|tojson }};    // [500, 650, 420, ...]
+
+    const trendLineChart = new Chart(trendCtx, {
+        type: 'line',
+        /*
+        LINE CHART:
+        Perfect for time-series data (data points over time).
+        Shows trends, peaks, valleys clearly.
+        */
+
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Monthly Spending',
+                data: trendData,
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                /*
+                COLOR NOTES:
+                - borderColor: Solid blue for line
+                - backgroundColor: Semi-transparent blue for area under line
+                rgba(r, g, b, alpha) - alpha=0.1 means 10% opacity
+                */
+
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                /*
+                LINE STYLING:
+                - borderWidth: Thickness of line
+                - fill: true fills area under line with backgroundColor
+                - tension: 0 = straight lines, 1 = very curved (0.4 is nice balance)
+                */
+
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#3498db',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+                /*
+                POINT STYLING:
+                Each data point is a circle on the line.
+                Hover makes it bigger (nice visual feedback!).
+                */
+            }]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(2);
+                        }
+                        /*
+                        Y-AXIS FORMATTING:
+                        Show dollar signs on y-axis labels.
+                        500 becomes $500.00
+                        */
+                    }
+                }
+            },
+
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ========================================================================
+    // CHART 3: Monthly Comparison Bar Chart
+    // ========================================================================
+
+    const monthlyCtx = document.getElementById('monthlyBarChart').getContext('2d');
+
+    const monthlyBarChart = new Chart(monthlyCtx, {
+        type: 'bar',
+        /*
+        BAR CHART:
+        Best for comparing discrete categories.
+        Height of bars makes comparison easy.
+        */
+
+        data: {
+            labels: trendLabels,  // Reusing same labels from line chart
+            datasets: [{
+                label: 'Monthly Spending',
+                data: trendData,    // Reusing same data from line chart
+                backgroundColor: '#2ecc71',
+                borderColor: '#27ae60',
+                borderWidth: 2,
+                borderRadius: 5,
+                /*
+                BAR STYLING:
+                - backgroundColor: Fill color (green)
+                - borderColor: Darker green border
+                - borderRadius: Rounds top of bars (modern look!)
+                */
+            }]
+        },
+
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(2);
+                        }
+                    }
+                }
+            },
+
+            plugins: {
+                legend: {
+                    display: false  // Hide legend since it's obvious from title
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Total: $${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    /*
+    CHART.JS BEST PRACTICES:
+
+    1. Store chart instances if you need to update them later:
+       const myChart = new Chart(...);
+       Later: myChart.data.datasets[0].data = newData; myChart.update();
+
+    2. Destroy old charts before creating new ones:
+       if (window.myChart) { window.myChart.destroy(); }
+
+    3. Use responsive options for mobile compatibility
+
+    4. Format currency properly in tooltips and axes
+
+    5. Choose right chart type for your data:
+       - Time series → Line chart
+       - Proportions → Pie/Doughnut
+       - Comparisons → Bar chart
+       - Relationships → Scatter plot
+
+    6. Don't overload charts with too much data (max 10-12 categories)
+
+    7. Use consistent color schemes (we use category colors from backend)
+    */
+
+    console.log('Analytics charts rendered successfully!');
+    /*
+    CONSOLE LOGGING:
+    Helpful for debugging. Open browser console (F12) to see this message.
+    If charts don't appear, check console for JavaScript errors.
+    */
+});
+
+/*
+EDUCATIONAL NOTES FOR JUNIOR DEVELOPERS:
+
+UNDERSTANDING CHART.JS:
+
+1. CHART TYPES AND USE CASES:
+   - Pie/Doughnut: Parts of a whole (category breakdown)
+   - Line: Trends over time (spending patterns)
+   - Bar: Comparing quantities (monthly totals)
+   - Scatter: Correlations (expense amount vs time of month)
+   - Radar: Multi-dimensional comparison
+
+2. DATA STRUCTURE:
+   {
+     labels: ['Jan', 'Feb', 'Mar'],  // X-axis labels
+     datasets: [{
+       label: 'Sales',               // Legend label
+       data: [100, 200, 150]         // Y-axis values
+     }]
+   }
+
+3. CUSTOMIZATION OPTIONS:
+   - Colors: backgroundColor, borderColor
+   - Styling: borderWidth, borderRadius, tension
+   - Interaction: hover effects, tooltips, click events
+   - Scales: min/max, gridlines, tick formatting
+   - Plugins: legends, tooltips, titles
+
+4. RESPONSIVE DESIGN:
+   Chart.js automatically handles:
+   - Window resizing
+   - Mobile touch events
+   - High-DPI displays (retina screens)
+
+5. COMMON PITFALLS:
+   ❌ Creating chart before DOM loads → Use DOMContentLoaded
+   ❌ Forgetting to destroy old chart → Memory leak
+   ❌ Wrong data format → Check console for errors
+   ❌ Canvas not visible → Check CSS display/visibility
+   ❌ Missing Chart.js library → Check script tag in base.html
+
+6. DEBUGGING TIPS:
+   - Open browser console (F12)
+   - Check for JavaScript errors
+   - Verify data with console.log(categoryData)
+   - Inspect canvas element with browser dev tools
+   - Ensure Chart.js CDN is loading (Network tab)
+
+FURTHER LEARNING:
+- Chart.js Docs: https://www.chartjs.org/docs/latest/
+- Chart.js Samples: https://www.chartjs.org/samples/latest/
+- MDN Canvas API: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API
+*/
+</script>
+
+{% endblock %}
+
+<!--
+TESTING CHECKLIST:
+
+Visual Appearance:
+- [ ] All three charts render without errors
+- [ ] Charts are properly sized and centered
+- [ ] Colors match expense categories
+- [ ] Text is readable (not too small/large)
+- [ ] Responsive layout works on mobile
+
+Interactivity:
+- [ ] Hovering over pie slices shows tooltip with percentage
+- [ ] Hovering over line points shows exact value
+- [ ] Hovering over bars shows total
+- [ ] Charts resize smoothly when browser window changes
+
+Data Accuracy:
+- [ ] Pie chart percentages add up to 100%
+- [ ] Line chart shows correct monthly totals
+- [ ] Bar chart heights match line chart values
+- [ ] Summary stats match database totals
+
+Edge Cases:
+- [ ] Page handles no expense data gracefully (redirect to dashboard)
+- [ ] Works with single expense
+- [ ] Works with many categories (10+)
+- [ ] Long category names don't break layout
+
+ACCESSIBILITY:
+- Add aria-label to canvas elements for screen readers
+- Provide alternative data table for non-visual users
+- Ensure keyboard navigation works
+- Use sufficient color contrast
+
+PERFORMANCE:
+- Charts render quickly (< 500ms)
+- No lag when hovering or interacting
+- Page doesn't freeze with large datasets
+- Memory doesn't leak when navigating away
+-->

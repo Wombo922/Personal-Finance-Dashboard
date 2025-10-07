@@ -1,0 +1,220 @@
+# REQUIREMENTS.TXT - Python Dependencies
+# ======================================
+#
+# PURPOSE:
+# Lists all Python packages this project needs to run.
+# Makes it easy for anyone to install the same versions we used.
+#
+# HOW TO USE:
+# 1. Activate virtual environment: venv\Scripts\activate (Windows) or source venv/bin/activate (Mac/Linux)
+# 2. Install all packages: pip install -r requirements.txt
+#
+# WHY VIRTUAL ENVIRONMENT?
+# Isolates project dependencies from system Python.
+# Different projects can use different package versions without conflicts.
+#
+# PACKAGE VERSIONS:
+# Format: package==version
+# - ==: Exact version (safest, most predictable)
+# - >=: Minimum version (gets updates)
+# - ~=: Compatible version (minor updates only)
+#
+# EXAMPLE:
+# Flask==3.0.0 - Exactly version 3.0.0
+# Flask>=3.0.0 - Version 3.0.0 or higher
+# Flask~=3.0.0 - Version 3.0.x (not 3.1.0)
+#
+
+# ============================================
+# CORE FRAMEWORK
+# ============================================
+
+Flask==3.0.0
+# Purpose: Web framework that powers our application
+# Website: https://flask.palletsprojects.com/
+# What it does: Handles routing, requests, responses, templates
+# License: BSD-3-Clause
+
+Werkzeug==3.0.0
+# Purpose: WSGI utility library (Flask dependency)
+# What it does: HTTP request/response handling, URL routing
+# Note: Usually installed automatically with Flask
+
+Jinja2==3.1.2
+# Purpose: Template engine (Flask dependency)
+# What it does: Renders HTML templates with Python variables
+# Note: Usually installed automatically with Flask
+
+# ============================================
+# DATABASE (Optional - for development)
+# ============================================
+
+# Note: SQLite is built into Python, no package needed!
+# These are optional tools for viewing/managing SQLite databases:
+
+# sqlite3 - Built into Python standard library
+# For GUI database browser, download: https://sqlitebrowser.org/
+
+# ============================================
+# DEVELOPMENT TOOLS
+# ============================================
+
+# Uncomment these for development (not needed for production):
+
+# python-dotenv==1.0.0
+# Purpose: Loads environment variables from .env file
+# Helpful for: Managing secrets (API keys, database URLs)
+# Install: pip install python-dotenv
+
+# ============================================
+# FUTURE ENHANCEMENTS
+# ============================================
+
+# When we add these features, uncomment and install:
+
+# For data export (CSV is built-in, these add more formats):
+# pandas==2.1.0          # Data analysis and export to Excel
+# openpyxl==3.1.2        # Excel file support
+
+# For charts (if doing server-side rendering):
+# matplotlib==3.8.0      # Create charts in Python
+# Pillow==10.0.0         # Image processing
+
+# For API development:
+# flask-cors==4.0.0      # Cross-Origin Resource Sharing
+# flask-restful==0.3.10  # REST API utilities
+
+# For authentication (Week 4+):
+# Flask-Login==0.6.3     # User session management
+# Flask-Bcrypt==1.0.1    # Password hashing
+# Flask-WTF==1.2.1       # Form handling and CSRF protection
+
+# For production deployment:
+# gunicorn==21.2.0       # Production WSGI server
+# python-decouple==3.8   # Better config management
+
+# ============================================
+# PACKAGE EXPLANATIONS FOR JUNIOR DEVELOPERS
+# ============================================
+
+"""
+UNDERSTANDING PYTHON PACKAGES:
+
+What is pip?
+- Package installer for Python
+- Downloads packages from PyPI (Python Package Index)
+- Manages dependencies automatically
+
+Common pip commands:
+- pip install package_name          # Install package
+- pip install -r requirements.txt   # Install from file
+- pip freeze > requirements.txt     # Export current packages
+- pip list                          # Show installed packages
+- pip show package_name             # Show package details
+- pip uninstall package_name        # Remove package
+
+Virtual Environments:
+Without: pip install affects system Python (can break things!)
+With: pip install only affects project (safe, isolated)
+
+Creating virtual environment:
+python -m venv venv
+
+Activating:
+Windows: venv\\Scripts\\activate
+Mac/Linux: source venv/bin/activate
+
+Deactivating:
+deactivate
+
+You know it's activated when you see (venv) in terminal prompt.
+
+DEPENDENCY MANAGEMENT BEST PRACTICES:
+
+1. Always use virtual environments
+2. Pin exact versions for production (==)
+3. Document what each package does
+4. Regularly update packages (check for security fixes)
+5. Don't commit venv folder to Git (add to .gitignore)
+6. DO commit requirements.txt to Git
+
+SECURITY NOTES:
+
+- Never commit API keys or passwords to requirements.txt
+- Use python-dotenv for secrets (.env file in .gitignore)
+- Regularly check for vulnerable packages: pip install safety && safety check
+- Update packages periodically: pip install --upgrade package_name
+
+TROUBLESHOOTING:
+
+"Package not found":
+- Check spelling
+- Check if PyPI is accessible
+- Try: pip install --upgrade pip
+
+"Permission denied":
+- Don't use sudo (use virtual environment instead)
+- Check if virtual environment is activated
+
+"Version conflict":
+- One package requires version X, another requires version Y
+- Solution: Find compatible versions or use different package
+
+GENERATING requirements.txt:
+
+After installing packages:
+pip freeze > requirements.txt
+
+This captures ALL packages. Clean it up by:
+1. Removing packages you didn't explicitly install (sub-dependencies)
+2. Adding comments explaining each package
+3. Organizing into sections
+
+ALTERNATIVE: requirements.in
+Some projects use .in file for top-level packages,
+then generate full .txt file with all dependencies.
+Tool: pip-tools
+"""
+
+# ============================================
+# CURRENT MINIMAL SETUP
+# ============================================
+
+# Our project currently needs just Flask!
+# SQLite is built-in to Python (no package needed)
+# We're using vanilla JavaScript (no frontend build tools)
+# CSS is custom (no framework like Bootstrap needed as package)
+
+# As we add features (authentication, APIs, etc.), we'll add more packages here.
+# This keeps the project lightweight and fast to set up!
+
+# ============================================
+# INSTALLATION INSTRUCTIONS
+# ============================================
+
+# Step-by-step setup for new developers:
+
+# 1. Clone the project
+# git clone <repository-url>
+# cd personal-finance-dashboard
+
+# 2. Create virtual environment
+# python -m venv venv
+
+# 3. Activate virtual environment
+# Windows: venv\Scripts\activate
+# Mac/Linux: source venv/bin/activate
+
+# 4. Install dependencies
+# pip install -r requirements.txt
+
+# 5. Initialize database
+# python database.py
+
+# 6. Run application
+# python app.py
+
+# 7. Open browser
+# http://localhost:5000
+
+# Done! You should see the dashboard.

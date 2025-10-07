@@ -1,0 +1,291 @@
+<!--
+VIEW_EXPENSES.HTML - All Expenses Page
+========================================
+
+PURPOSE:
+Displays all expenses in a comprehensive table with filtering options.
+Users can filter by category and date range to find specific expenses.
+
+FEATURES IMPLEMENTED:
+- Complete expense list in table format
+- Filter by category (dropdown)
+- Filter by date range (start/end date inputs)
+- Quick filter buttons (This Month, Last Month, etc.)
+- Clear filters option
+- Edit and delete actions for each expense
+- Responsive design (mobile-friendly)
+
+JUNIOR DEVELOPER NOTES:
+- This page demonstrates advanced filtering
+- URL parameters maintain filter state (bookmarkable/shareable)
+- Form submission uses GET method (filters appear in URL)
+- Mobile-responsive table converts to cards
+-->
+
+{% extends "base.html" %}
+
+{% block title %}All Expenses - Personal Finance Tracker{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <h1>All Expenses</h1>
+    <p class="subtitle">View and manage all your expense records</p>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section" style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h2 style="margin-top: 0;">Filter Expenses</h2>
+
+    <!-- Filter Form -->
+    <form method="GET" action="{{ url_for('view_expenses') }}" style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: end;">
+
+        <!-- Category Filter -->
+        <div style="flex: 1; min-width: 200px;">
+            <label for="category" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Category:</label>
+            <select id="category" name="category" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                <option value="">All Categories</option>
+                {% for cat_name, cat_color in categories %}
+                <option value="{{ cat_name }}" {% if category_filter == cat_name %}selected{% endif %}>
+                    {{ cat_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Start Date Filter -->
+        <div style="flex: 1; min-width: 180px;">
+            <label for="start_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">From Date:</label>
+            <input type="date" id="start_date" name="start_date" value="{{ start_date }}"
+                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+        </div>
+
+        <!-- End Date Filter -->
+        <div style="flex: 1; min-width: 180px;">
+            <label for="end_date" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">To Date:</label>
+            <input type="date" id="end_date" name="end_date" value="{{ end_date }}"
+                   style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+        </div>
+
+        <!-- Filter Buttons -->
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; min-width: 100%; justify-content: flex-start;">
+            <button type="submit" class="btn btn-primary" style="white-space: nowrap; flex: 0 0 auto;">
+                Apply Filters
+            </button>
+            <a href="{{ url_for('view_expenses') }}" class="btn btn-secondary" style="white-space: nowrap; flex: 0 0 auto; text-decoration: none; display: inline-block;">
+                Clear Filters
+            </a>
+        </div>
+        <!--
+        BUTTON LAYOUT FIX:
+        - gap: 0.75rem - More space between buttons
+        - flex-wrap: wrap - Buttons stack on small screens
+        - min-width: 100% - Buttons on their own row
+        - flex: 0 0 auto - Buttons don't grow/shrink
+        - text-decoration: none - Remove underline from link
+        -->
+    </form>
+
+    <!-- Quick Filter Buttons -->
+    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <span style="font-weight: 600; margin-right: 0.5rem;">Quick Filters:</span>
+        <a href="{{ url_for('view_expenses', start_date=(now.replace(day=1).strftime('%Y-%m-%d')), end_date=now.strftime('%Y-%m-%d')) }}" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+            This Month
+        </a>
+        <a href="{{ url_for('view_expenses', start_date=((now.replace(day=1) - timedelta(days=1)).replace(day=1).strftime('%Y-%m-%d')), end_date=(now.replace(day=1) - timedelta(days=1)).strftime('%Y-%m-%d')) }}" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+            Last Month
+        </a>
+        <a href="{{ url_for('view_expenses', start_date=(now - timedelta(days=7)).strftime('%Y-%m-%d'), end_date=now.strftime('%Y-%m-%d')) }}" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+            Last 7 Days
+        </a>
+        <a href="{{ url_for('view_expenses', start_date=(now - timedelta(days=30)).strftime('%Y-%m-%d'), end_date=now.strftime('%Y-%m-%d')) }}" class="btn btn-secondary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+            Last 30 Days
+        </a>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+{% if expenses %}
+<div class="stats-grid" style="margin-bottom: 2rem;">
+    <div class="stat-card stat-card-primary">
+        <div class="stat-icon">📝</div>
+        <div class="stat-content">
+            <h3 class="stat-label">Filtered Results</h3>
+            <p class="stat-value">{{ expenses|length }}</p>
+        </div>
+    </div>
+
+    <div class="stat-card stat-card-success">
+        <div class="stat-icon">💰</div>
+        <div class="stat-content">
+            <h3 class="stat-label">Total Amount</h3>
+            <p class="stat-value">{{ total_amount|currency }}</p>
+        </div>
+    </div>
+
+    <div class="stat-card stat-card-info">
+        <div class="stat-icon">📊</div>
+        <div class="stat-content">
+            <h3 class="stat-label">Average</h3>
+            <p class="stat-value">
+                {% if expenses|length > 0 %}
+                    {{ (total_amount / expenses|length)|currency }}
+                {% else %}
+                    $0.00
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Expenses Table -->
+<div style="background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+    <div style="padding: 1.5rem; border-bottom: 1px solid #e0e0e0;">
+        <h2 style="margin: 0;">Expense Records</h2>
+    </div>
+
+    <div class="table-container">
+        <table class="expense-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in expenses %}
+                <tr>
+                    <td data-label="Date">
+                        {{ expense.date|date_format('%m/%d/%Y') }}
+                    </td>
+                    <td data-label="Category">
+                        <span class="category-badge" style="background-color: {{ category_colors[expense.category] }}; color: white; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; font-weight: 600;">
+                            {{ expense.category }}
+                        </span>
+                    </td>
+                    <td data-label="Description">
+                        {{ expense.description if expense.description else '—' }}
+                    </td>
+                    <td data-label="Amount" class="amount-cell" style="font-weight: 600; color: #2C3E50;">
+                        {{ expense.amount|currency }}
+                    </td>
+                    <td data-label="Actions" class="action-cell">
+                        <a href="{{ url_for('edit_expense', expense_id=expense.id) }}" class="btn-icon" title="Edit" style="text-decoration: none; margin-right: 0.5rem;">
+                            ✏️
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_expense_route', expense_id=expense.id) }}" style="display: inline;">
+                            <button type="submit" class="btn-icon btn-danger" title="Delete"
+                                    onclick="return confirm('Are you sure you want to delete this expense?\n\nDate: {{ expense.date }}\nCategory: {{ expense.category }}\nAmount: {{ expense.amount|currency }}');"
+                                    style="background: none; border: none; cursor: pointer; font-size: 1.25rem; padding: 0.25rem;">
+                                🗑️
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% else %}
+<!-- Empty State when no expenses match filters -->
+<div class="empty-state" style="text-align: center; padding: 3rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <p class="empty-icon" style="font-size: 4rem; margin-bottom: 1rem;">🔍</p>
+
+    {% if category_filter or start_date or end_date %}
+    <!-- User has filters applied but no results -->
+    <p class="empty-message" style="font-size: 1.25rem; color: #2C3E50; margin-bottom: 0.5rem;">No expenses match your filters</p>
+    <p class="empty-hint" style="color: #666; margin-bottom: 1.5rem;">Try adjusting your filter criteria or clear all filters to see all expenses.</p>
+    <a href="{{ url_for('view_expenses') }}" class="btn btn-primary">Clear All Filters</a>
+    {% else %}
+    <!-- No expenses in database at all -->
+    <p class="empty-message" style="font-size: 1.25rem; color: #2C3E50; margin-bottom: 0.5rem;">No expenses recorded yet</p>
+    <p class="empty-hint" style="color: #666; margin-bottom: 1.5rem;">Start tracking your spending by adding your first expense!</p>
+    <a href="{{ url_for('add_expense') }}" class="btn btn-primary">Add Your First Expense</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Export Section -->
+{% if expenses %}
+<div style="margin-top: 2rem; text-align: center;">
+    <a href="{{ url_for('export_csv') }}" class="btn btn-secondary">
+        📥 Export All Expenses to CSV
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+<!--
+EDUCATIONAL NOTES FOR JUNIOR DEVELOPERS:
+
+KEY CONCEPTS DEMONSTRATED:
+
+1. **URL Parameters for Filters**:
+   - GET form method adds filters to URL: /expenses?category=Food&start_date=2025-10-01
+   - Makes filters bookmarkable and shareable
+   - Back button preserves filter state
+   - Good for SEO (search engines can index filtered pages)
+
+2. **Selected State in Forms**:
+   - Use selected attribute to pre-select dropdown: {% if category_filter == cat %}selected{% endif %}
+   - Use value attribute to pre-fill inputs: value="{{ start_date }}"
+   - Preserves user's filter choices after form submission
+
+3. **Conditional Empty States**:
+   - Different messages based on whether filters are applied
+   - Helps users understand why they're seeing no results
+   - Provides clear next action (Clear Filters vs Add Expense)
+
+4. **Quick Filter Links**:
+   - Generate URLs with pre-calculated date ranges
+   - Use Python datetime in template (passed from backend)
+   - Common patterns: This Month, Last Month, Last 7 Days
+
+5. **Inline Styles vs CSS Classes**:
+   - Inline styles used here for simplicity (learning project)
+   - Production: Move to CSS file for maintainability
+   - Trade-off: Inline = quick/simple, External = reusable/maintainable
+
+6. **Responsive Table Design**:
+   - data-label attribute for mobile view
+   - CSS transforms table to cards on small screens
+   - Defined in style.css media queries
+
+7. **Confirmation Dialogs**:
+   - onclick="return confirm()" prevents accidental deletions
+   - Multi-line message with \n shows expense details
+   - return false cancels form submission
+
+8. **Template Filters**:
+   - |currency formats numbers as money
+   - |date_format converts dates to readable format
+   - |length counts items in list
+   - Can chain filters: {{ value|filter1|filter2 }}
+
+BEST PRACTICES:
+
+✅ Always provide clear feedback (empty states, confirmation dialogs)
+✅ Preserve user input (pre-fill forms with current values)
+✅ Make actions reversible or require confirmation (delete)
+✅ Show helpful statistics (count, total, average)
+✅ Provide multiple ways to accomplish tasks (form filters + quick buttons)
+✅ Consider mobile users (responsive design, touch-friendly buttons)
+
+TESTING CHECKLIST:
+- [ ] Filters work correctly (each filter individually and combined)
+- [ ] Quick filter buttons generate correct date ranges
+- [ ] Clear Filters button resets page
+- [ ] Edit links go to correct expense
+- [ ] Delete shows confirmation with expense details
+- [ ] Empty state shows appropriate message
+- [ ] Statistics calculate correctly
+- [ ] Table is readable on mobile
+- [ ] Export link works
+-->

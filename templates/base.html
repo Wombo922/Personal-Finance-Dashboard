@@ -1,0 +1,463 @@
+<!--
+BASE.HTML - Master Template Layout
+===================================
+
+PURPOSE:
+This is the "master template" that all other pages extend.
+It contains the common elements that appear on every page:
+- HTML head (meta tags, CSS links)
+- Navigation bar
+- Footer
+- Flash message display area
+
+TEMPLATE INHERITANCE:
+Instead of copying navigation/footer to every page, we:
+1. Define common structure here (base.html)
+2. Other templates "extend" this and fill in specific content
+3. Changes to navigation automatically apply to all pages
+
+JINJA2 TEMPLATING:
+Flask uses Jinja2 template engine which adds special syntax to HTML:
+- Double braces insert variable values
+- Percent braces execute template logic (loops, conditionals, etc.)
+- Hash braces are template comments (don't appear in final HTML)
+
+JUNIOR DEVELOPER NOTES:
+- Think of this as the "frame" and other templates as the "picture"
+- block content is a placeholder that child templates fill
+- All CSS/JS that every page needs goes here
+- Keep this file clean - don't add page-specific code here
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<!--
+DOCTYPE:
+Tells browser this is HTML5 document.
+Always include this as first line of HTML files.
+
+lang="en":
+Specifies language is English. Helps screen readers and search engines.
+-->
+
+<head>
+    <!-- ============================================ -->
+    <!-- META TAGS - Information About This Page     -->
+    <!-- ============================================ -->
+
+    <meta charset="UTF-8">
+    <!--
+    CHARSET:
+    UTF-8 supports all characters (English, emoji, special symbols, etc.)
+    Always include this to prevent character display issues.
+    -->
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--
+    VIEWPORT:
+    Makes site mobile-friendly (responsive).
+    - width=device-width: Use device's actual width
+    - initial-scale=1.0: Don't zoom in or out by default
+
+    Without this, mobile browsers show desktop version zoomed out.
+    -->
+
+    <meta name="description" content="Personal Finance Dashboard - Track expenses, manage budgets, and analyze spending">
+    <!--
+    DESCRIPTION:
+    Shows up in search engine results under page title.
+    Keep under 160 characters for best display.
+    -->
+
+    <meta name="author" content="Personal Finance Dashboard Team">
+
+    <!-- ============================================ -->
+    <!-- PAGE TITLE                                   -->
+    <!-- ============================================ -->
+
+    <title>
+        {% block title %}Personal Finance Dashboard{% endblock %}
+    </title>
+    <!--
+    BLOCK TITLE:
+    Child templates can override this to set custom page titles.
+    If not overridden, shows "Personal Finance Dashboard"
+
+    Example in child template:
+    Use block title directive to override default title
+    -->
+
+    <!-- ============================================ -->
+    <!-- STYLESHEETS                                  -->
+    <!-- ============================================ -->
+
+    <!-- Our custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!--
+    URL_FOR:
+    {{ url_for('static', filename='css/style.css') }}
+    Generates: /static/css/style.css
+
+    Why use url_for instead of hardcoding path?
+    - If we change static folder location, links auto-update
+    - Works correctly if app is hosted in subdirectory
+    - Flask handles URL generation correctly for our setup
+    -->
+
+    <!-- Optional: Add CSS framework (Bootstrap, Tailwind, etc.) -->
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"> -->
+    <!--
+    CSS FRAMEWORKS:
+    Commented out for now. Uncomment if you want to use Bootstrap.
+    Pros: Fast development, consistent look, mobile-responsive
+    Cons: Sites look generic, larger file size
+
+    For learning, we'll write our own CSS first!
+    -->
+
+    <!-- Custom styles for specific pages -->
+    {% block extra_css %}{% endblock %}
+    <!--
+    EXTRA_CSS BLOCK:
+    Allows child templates to add page-specific CSS.
+    Most CSS goes in style.css, but use this for one-off styles.
+    -->
+
+    <!-- Inline script to prevent dark mode flash (FOUC) -->
+    <script>
+        // Apply dark mode IMMEDIATELY before page renders
+        // This prevents the flash of light mode when navigating between pages (FOUC)
+        // IIFE (Immediately Invoked Function Expression) executes instantly
+        (function() {
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                // Add dark-mode class to html element before body is parsed
+                // This allows CSS to apply dark styles immediately
+                document.documentElement.classList.add('dark-mode-pre');
+            }
+        })();
+    </script>
+</head>
+
+<body>
+    <!-- Apply dark mode to body immediately (prevents flash) -->
+    <script>
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.body.classList.add('dark-mode');
+        }
+    </script>
+
+    <!--
+    BODY STRUCTURE:
+    - Header: Navigation bar
+    - Main: Page content (filled by child templates)
+    - Footer: Copyright and links
+    - Dark Mode Toggle: Floating button to switch themes
+    -->
+
+    <!-- Dark Mode Toggle Button -->
+    <button id="darkModeToggle" onclick="toggleDarkMode()" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <span id="darkModeIcon"><script>document.write(localStorage.getItem('darkMode') === 'enabled' ? '☀️' : '🌙');</script></span>
+    </button>
+    <!--
+    DARK MODE TOGGLE:
+    - Fixed position button (stays in top-right while scrolling)
+    - Shows moon emoji 🌙 in light mode
+    - Shows sun emoji ☀️ in dark mode
+    - Calls toggleDarkMode() JavaScript function
+    - aria-label for accessibility (screen readers)
+    -->
+
+    <!-- ============================================ -->
+    <!-- NAVIGATION BAR                               -->
+    <!-- ============================================ -->
+
+    <header class="navbar">
+        <div class="nav-container">
+            <!-- Logo/Brand -->
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}">
+                    💰 Finance Tracker
+                </a>
+            </div>
+
+            <!-- Navigation Links -->
+            <ul class="nav-menu">
+                <li>
+                    <a href="{{ url_for('index') }}" class="nav-link">
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('view_expenses') }}" class="nav-link">
+                        Expenses
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('view_income') }}" class="nav-link">
+                        Income
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('manage_budgets') }}" class="nav-link">
+                        Budgets
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('analytics') }}" class="nav-link">
+                        Analytics
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- ============================================ -->
+    <!-- FLASH MESSAGES                               -->
+    <!-- ============================================ -->
+
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            <!--
+            GET_FLASHED_MESSAGES:
+            Flask function that retrieves messages set by flash().
+            with_categories=true returns (category, message) tuples.
+
+            Categories: 'success', 'error', 'warning', 'info'
+            CSS will style each category differently (green, red, yellow, blue)
+            -->
+
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <!--
+                        DYNAMIC CSS CLASS:
+                        alert-{{ category }} becomes:
+                        - alert-success (green)
+                        - alert-error (red)
+                        - alert-warning (yellow)
+                        - alert-info (blue)
+
+                        CSS will define styles for each class.
+                        -->
+
+                        <span class="alert-icon">
+                            {% if category == 'success' %}
+                                ✅
+                            {% elif category == 'error' %}
+                                ❌
+                            {% elif category == 'warning' %}
+                                ⚠️
+                            {% else %}
+                                ℹ️
+                            {% endif %}
+                        </span>
+                        <!--
+                        CONDITIONAL ICONS:
+                        Shows different emoji based on message type.
+                        Provides visual feedback at a glance.
+                        -->
+
+                        <span class="alert-message">{{ message }}</span>
+
+                        <button class="alert-close" onclick="this.parentElement.remove()">
+                            ✕
+                        </button>
+                        <!--
+                        CLOSE BUTTON:
+                        onclick="this.parentElement.remove()"
+                        - this = the button
+                        - parentElement = the alert div
+                        - remove() = removes element from page
+
+                        Lets users dismiss messages without page reload.
+                        -->
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <!--
+        WITH STATEMENT:
+        Creates temporary variable (messages) that only exists in this block.
+        Good practice - doesn't pollute template namespace.
+        -->
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MAIN CONTENT AREA                            -->
+    <!-- ============================================ -->
+
+    <main class="container">
+        <!--
+        MAIN TAG:
+        Semantic HTML - indicates primary content of page.
+        Good for screen readers and SEO.
+
+        CONTAINER CLASS:
+        Centers content and provides consistent padding/width.
+        Standard pattern in web design.
+        -->
+
+        {% block content %}
+        <!-- This is where child templates insert their content -->
+        <!-- If no child template, this placeholder text shows -->
+        <p>Content goes here. This should be overridden by child templates.</p>
+        {% endblock %}
+
+        <!--
+        BLOCK CONTENT:
+        This is the main "slot" where child templates put their HTML.
+
+        In child template:
+        Use extends directive with base.html
+        Use block content directive
+            Add your page HTML here
+        End block directive
+        -->
+    </main>
+
+    <!-- ============================================ -->
+    <!-- FOOTER                                       -->
+    <!-- ============================================ -->
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; {{ current_year }} Personal Finance Dashboard. Built with ❤️ and Python.</p>
+            <!--
+            COPYRIGHT SYMBOL:
+            &copy; is HTML entity for ©
+
+            CURRENT_YEAR:
+            Injected by context processor in app.py.
+            Updates automatically each year (no manual updates needed!).
+            -->
+
+            <div class="footer-links">
+                <a href="#">About</a>
+                <span class="separator">|</span>
+                <a href="#">Privacy</a>
+                <span class="separator">|</span>
+                <a href="#">Help</a>
+            </div>
+            <!--
+            FOOTER LINKS:
+            Placeholder links (href="#" goes nowhere).
+            Replace with real pages when you create them.
+
+            Separator creates visual division between links.
+            -->
+        </div>
+    </footer>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT                                   -->
+    <!-- ============================================ -->
+
+    <!-- Main JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Initialize dark mode immediately -->
+    <script>
+        // This ensures dark mode works even if main.js has issues
+        if (typeof initDarkMode === 'function') {
+            initDarkMode();
+        }
+
+        // Test function - remove this after confirming it works
+        console.log('Base template loaded');
+        console.log('toggleDarkMode function exists:', typeof toggleDarkMode !== 'undefined');
+        console.log('Dark mode button:', document.getElementById('darkModeToggle'));
+    </script>
+    <!--
+    JAVASCRIPT PLACEMENT:
+    Always put <script> tags at end of body, not in <head>.
+    Why? Browser loads page top to bottom. If JS is in <head>:
+    1. Browser downloads JS before HTML
+    2. Page looks broken while JS loads
+    3. JS might try to access HTML elements that don't exist yet
+
+    At end of body:
+    1. HTML loads first - user sees content immediately
+    2. JS can safely access all HTML elements
+    3. Page feels faster
+    -->
+
+    <!-- Optional: JavaScript libraries (jQuery, Chart.js, etc.) -->
+    <!-- Add Chart.js for analytics page -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!--
+    CHART.JS:
+    Library for creating charts (pie, line, bar, etc.)
+    Loaded from CDN (Content Delivery Network) for speed.
+    Only needed on analytics page, but including globally for simplicity.
+
+    OPTIMIZATION NOTE:
+    For production, only load on pages that need it using block extra_js
+    -->
+
+    <!-- Page-specific JavaScript -->
+    {% block extra_js %}{% endblock %}
+    <!--
+    EXTRA_JS BLOCK:
+    Allows child templates to add page-specific JavaScript.
+
+    Example:
+    Use block extra_js to add page-specific JavaScript
+        Add script tags with your code here
+    End the block directive
+    -->
+
+    <!-- ============================================ -->
+    <!-- ACCESSIBILITY & SEO ENHANCEMENTS             -->
+    <!-- ============================================ -->
+
+    <!--
+    ACCESSIBILITY CHECKLIST (For Junior Devs):
+    ✅ Semantic HTML tags (<header>, <nav>, <main>, <footer>)
+    ✅ Alt text on images (when we add them)
+    ✅ Proper heading hierarchy (h1 > h2 > h3)
+    ✅ Form labels associated with inputs
+    ✅ Keyboard navigation support
+    ✅ Color contrast meets WCAG standards
+    ✅ ARIA labels where needed
+
+    SEO CHECKLIST:
+    ✅ Descriptive page titles
+    ✅ Meta descriptions
+    ✅ Semantic HTML
+    ✅ Heading structure
+    ✅ Fast load times
+    ✅ Mobile responsive
+
+    These make your site usable for everyone and discoverable by search engines!
+    -->
+</body>
+</html>
+
+<!--
+TEMPLATE INHERITANCE EXAMPLE:
+
+base.html (this file):
+    ┌─────────────────┐
+    │   Navigation    │
+    ├─────────────────┤
+    │                 │
+    │  block content  │  ← Child template content goes here
+    │                 │
+    ├─────────────────┤
+    │     Footer      │
+    └─────────────────┘
+
+index.html (child template):
+    Extends base.html
+    Defines content block
+        Adds dashboard HTML
+    Ends content block
+
+Final rendered page includes navigation + child content + footer!
+
+BENEFITS:
+- Write navigation once, use everywhere
+- Change navigation in one place, updates all pages
+- Consistent look and feel across entire site
+- Less code duplication = easier maintenance
+-->

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error {{ error_code }} - Personal Finance Tracker{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>❌ Error {{ error_code }}</h1>
+</div>
+<p>{{ error_message }}</p>
+<a href="{{ url_for('index') }}" class="btn btn-primary">Go to Dashboard</a>
+{% endblock %}
